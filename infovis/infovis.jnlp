@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<jnlp
+    spec="1.0+" 
+    codebase="http://ivtk.sourceforge.net/webstart"
+    href="infovis.jnlp">
+  <information>
+    <title>The InfoVis Toolkit</title>
+    <vendor>INRIA</vendor>
+    <homepage href="index.html"/>
+    <description>The InfoVis Toolkit (InfoVis)</description> 
+    <description kind="short">InfoVis</description>
+    <offline-allowed/>
+  </information>
+  <security>
+    <all-permissions/>
+  </security>
+  <resources>
+    <j2se version="1.5+"/>
+    <jar href="infovis.jar"/>
+    <jar href="examples.jar" download="lazy"/>
+    <jar href="JFontChooser.jar" download="lazy"/>
+    <jar href="antlr.jar" download="lazy"/>
+    <jar href="colt.jar"/>
+    <jar href="commons-compress-20050911.jar" download="lazy"/>
+    <jar href="concurrent.jar" download="lazy"/>
+    <jar href="log4j.jar"/>
+    <jar href="opencsv-1.8.jar" download="lazy"/>
+    <jar href="xmlenc-0.52.jar" download="lazy"/>
+    <jar href="xpp3_min-1.1.3.4.O.jar" download="lazy"/>
+    <jar href="xstream-1.2.2.jar" download="lazy"/>
+  </resources>
+  <component-desc />
+</jnlp>
+

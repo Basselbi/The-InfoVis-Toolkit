@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<jnlp
+    spec="1.0+" 
+    codebase="http://ivtk.sourceforge.net/webstart"
+    href="infovis-main.jnlp">
+  <information>
+    <title>The InfoVis Toolkit Main Program</title>
+    <vendor>INRIA</vendor>
+    <homepage href="index.html"/>
+    <description>The InfoVis Toolkit (InfoVis) Demo</description> 
+    <description kind="short">InfoVis Demo</description>
+    <offline-allowed/>
+  </information>
+  <security>
+    <all-permissions/>
+  </security>
+  <resources>
+    <j2se version="1.5+" max-heap-size="1023M"/>
+    <extension name="infovis"
+	       href="http://ivtk.sourceforge.net/webstart/infovis.jnlp"/>
+  </resources>
+  <application-desc main-class="infovis.panel.MainFrameDecorator"/>
+</jnlp>
+

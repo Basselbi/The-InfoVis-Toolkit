@@ -1,0 +1,753 @@
+/*****************************************************************************
+ * Copyright (C) 2003-2005 Jean-Daniel Fekete and INRIA, France              *
+ * ------------------------------------------------------------------------- *
+ * This software is published under the terms of the X11 Software License    *
+ * a copy of which has been included with this distribution in the           *
+ * license-infovis.txt file.                                                 *
+ *****************************************************************************/
+package infovis.panel;
+
+import infovis.Graph;
+import infovis.Table;
+import infovis.Tree;
+import infovis.Visualization;
+import infovis.column.AbstractBooleanColumn;
+import infovis.column.BooleanColumn;
+import infovis.column.StringColumn;
+import infovis.graph.DefaultGraph;
+import infovis.graph.io.GraphReaderFactory;
+import infovis.graph.io.HTMLGraphReader;
+import infovis.graph.visualization.GraphVisualization;
+import infovis.graph.visualization.MatrixVisualization;
+import infovis.io.AbstractReader;
+import infovis.io.AbstractReaderFactory;
+import infovis.table.DefaultTable;
+import infovis.table.io.TableReaderFactory;
+import infovis.table.visualization.ScatterPlotVisualization;
+import infovis.tree.DefaultTree;
+import infovis.tree.io.TreeReaderFactory;
+import infovis.tree.visualization.TreeVisualization;
+import infovis.tree.visualization.TreemapVisualization;
+import infovis.utils.FileHistory;
+import infovis.utils.FileHistory.IFileHistory;
+import infovis.visualization.VisualizationFactory;
+
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.Graphics2D;
+import java.awt.Rectangle;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+
+import javax.imageio.ImageIO;
+import javax.swing.AbstractAction;
+import javax.swing.BorderFactory;
+import javax.swing.BoundedRangeModel;
+import javax.swing.JComponent;
+import javax.swing.JDialog;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
+import javax.swing.JScrollPane;
+import javax.swing.JSlider;
+import javax.swing.JSplitPane;
+import javax.swing.JTabbedPane;
+import javax.swing.JTable;
+import javax.swing.JTextField;
+
+import org.apache.log4j.BasicConfigurator;
+import org.apache.log4j.Logger;
+import org.apache.log4j.PropertyConfigurator;
+
+//import agile2d.AgileJFrame;
+
+/**
+ * Component to create a visualization program as simply as possible.
+ * 
+ * @author Jean-Daniel Fekete
+ * @version $Revision: 1.61 $
+ */
+public class MainFrameDecorator implements ActionListener, IFileHistory {
+    private static Logger       logger            = Logger.getLogger(MainFrameDecorator.class);
+    protected JFrame            frame;
+    protected JMenuBar          menuBar;
+    protected JMenu             fileMenu;
+    protected JMenu             viewMenu;
+    protected JMenu             helpMenu;
+    protected JFileChooser      fileChooser;
+    protected JTextField        urlChooser;
+    protected JDialog           urlDialog;
+    protected JMenuItem         createImageItem;
+    protected JFileChooser      createImageFileChooser;
+    protected BoundedRangeModel scaleModel;
+    protected JMenu             visualizationMenu;
+    protected Object            table;
+    protected JFrame            tableFrame;
+    protected Visualization     visualization     = null;
+    protected JSplitPane        visualizationPanel;
+    protected ControlPanel      controlPanel;
+    protected JComponent        splashScreen;
+    private  FileHistory         fileHistory;
+    protected boolean           creatingWindow    = true;
+    //boolean usingAgile = false;
+    protected AbstractAction              fileOpenAction    = new DefaultAction(
+                                                          "Open",
+                                                          'O') {
+                                                      public void actionPerformed(
+                                                              ActionEvent e) {
+                                                          //fileHistory.processList(); // Hook into FileHistory class.
+                                                          chooseFile();
+                                                      }
+                                                  };
+    protected AbstractAction              urlOpenAction     = new DefaultAction(
+                                                          "Url Open",
+                                                          'U') {
+                                                      public void actionPerformed(
+                                                              ActionEvent e) {
+                                                          chooseURL();
+                                                      }
+                                                  };
+                                                  
+    protected AbstractAction              quitAction        = new DefaultAction(
+                                                          "Quit",
+                                                          'Q') {
+                                                      public void actionPerformed(
+                                                              ActionEvent e) {
+                                                          exit(0);
+                                                      }
+                                                  };
+    protected AbstractAction              aboutAction       = new AbstractAction(
+                                                          "About...") {
+                                                      public void actionPerformed(
+                                                              ActionEvent e) {
+                                                          JOptionPane.showMessageDialog(
+                                                                          null,
+                                                                          "The Visualization Toolkit\n(C) Jean-Daniel Fekete and INRIA, France",
+                                                                          "About the Visualization Toolkit",
+                                                                          JOptionPane.INFORMATION_MESSAGE);
+                                                      }
+                                                  };
+    //    AbstractAction toggleAgileAction =
+    //        new AbstractAction("Toggle Agile2D") {
+    //        public void actionPerformed(ActionEvent e) {
+    //            usingAgile = !usingAgile;
+    //        }
+    //    };
+    protected AbstractAction              createImageAction = new AbstractAction(
+                                                          "Create Image") {
+                                                      public void actionPerformed(
+                                                              ActionEvent e) {
+                                                          createImage();
+                                                      }
+                                                  };
+    protected AbstractAction              editTableAction   = new AbstractAction(
+                                                          "Edit Table") {
+                                                      public void actionPerformed(
+                                                              ActionEvent e) {
+                                                          editTable();
+                                                      }
+                                                  };
+
+    /**
+     * Creates a new MainFrameDecorator object.
+     * 
+     * @param frame
+     *            the JFrame to decorate.
+     */
+    public MainFrameDecorator(JFrame frame) {
+        this.frame = frame;
+        frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        frame.addWindowListener(new WindowAdapter() {
+            public void windowClosing(java.awt.event.WindowEvent e) {
+                exit(0);
+            }
+        });
+        AbstractReaderFactory.setFrame(frame);
+        urlDialog = new JDialog(frame, "Open URL ...", true);
+        urlChooser = new JTextField(30);
+        urlChooser.setAutoscrolls(true);
+        urlChooser.addActionListener(this);
+        urlDialog.getContentPane().add(urlChooser);
+        urlDialog.pack();
+        fileChooser = new JFileChooser(".");
+        fileChooser.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
+        fileChooser.setDoubleBuffered(false);
+        createImageFileChooser = new JFileChooser(".");
+        createImageFileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        createImageFileChooser.setDoubleBuffered(false);
+        JSlider scaleSlider = new JSlider(JSlider.VERTICAL, 0, 1600, 100);
+        scaleModel = scaleSlider.getModel();
+        scaleSlider.setMajorTickSpacing(100);
+        scaleSlider.setMinorTickSpacing(10);
+        scaleSlider.setPaintTicks(true);
+        scaleSlider.setPaintLabels(true);
+        scaleSlider.setBorder(BorderFactory.createTitledBorder("Scale"));
+        createImageFileChooser.setAccessory(scaleSlider);
+        menuBar = new JMenuBar();
+        frame.setJMenuBar(menuBar);
+        createMenus();
+        frame.getContentPane().add(createSplashScreen());
+    }
+
+    /**
+     * Creates the menus.
+     */
+    protected void createMenus() {
+        fileMenu = createFileMenu();
+        menuBar.add(fileMenu);
+        viewMenu = createViewMenu();
+        menuBar.add(viewMenu);
+        visualizationMenu = new JMenu("Visualization");
+        visualizationMenu.setEnabled(false);
+        menuBar.add(visualizationMenu);
+        helpMenu = createHelpMenu();
+        menuBar.add(helpMenu);
+        fileHistory = new FileHistory(this); // init FileHistory with our
+        // frame as the only parameter.
+        fileHistory.initFileMenuHistory(); // Start file history
+        // initialization.
+    }
+
+    /**
+     * Creates the file menu.
+     * 
+     * @return the file menu.
+     */
+    public JMenu createFileMenu() {
+        JMenu fileMenu = new JMenu("File");
+
+        fileMenu.add(fileOpenAction);
+        fileMenu.add(urlOpenAction);
+        createImageItem = fileMenu.add(createImageAction);
+        createImageItem.setEnabled(false);
+        fileMenu.addSeparator();
+        fileMenu.add(quitAction);
+        return fileMenu;
+    }
+
+    /**
+     * Creates the view menu.
+     * @return the view menu
+     */
+    public JMenu createViewMenu() {
+        JMenu viewMenu = new JMenu("View");
+
+        //JCheckBoxMenuItem cb = new JCheckBoxMenuItem(toggleAgileAction);
+        //        cb.setArmed(usingAgile);
+        //        viewMenu.add(cb);
+        viewMenu.add(editTableAction);
+        editTableAction.setEnabled(false);
+        return viewMenu;
+    }
+
+    /**
+     * Creates the help menu.
+     * 
+     * @return the help menu.
+     */
+    public JMenu createHelpMenu() {
+        JMenu helpMenu = new JMenu("Help");
+
+        helpMenu.add(aboutAction);
+        return helpMenu;
+    }
+
+    /**
+     * Create the splash screen.
+     * 
+     * @return the splash screen.
+     */
+    public JComponent createSplashScreen() {
+        splashScreen = new SplashPanel();
+        return splashScreen;
+    }
+
+    /**
+     * shows a file chooser and wait for an selection.
+     */
+    protected void chooseFile() {
+        int ret = fileChooser.showOpenDialog(frame);
+        if (ret == JFileChooser.APPROVE_OPTION) {
+            File file = fileChooser.getSelectedFile();
+            openFile(file);
+        }
+    }
+
+    protected void chooseURL() {
+        urlDialog.setVisible(true);
+        String url = urlChooser.getText();
+        if (url.length() != 0) {
+            Graph graph = new DefaultGraph();
+            HTMLGraphReader reader = new HTMLGraphReader(url, graph);
+            reader.add(url);
+            if (reader.load()) {
+                visualization = createGraphVisualization(url, graph);
+            }
+        }
+    }
+
+    /**
+     * Opens appropriate visualization type for graph, tree, or table file type.
+     * 
+     * @param file 	recognized by file extension.
+     * 
+     */
+    public void openFile(File file) {
+        final String name = file.getAbsolutePath();
+        
+        fileOpenAction.setEnabled(false);
+        urlOpenAction.setEnabled(false);
+
+
+        final Graph graph = new DefaultGraph();
+        AbstractReader reader = GraphReaderFactory.createGraphReader(name, graph);
+        if (reader != null) {
+            GraphReaderFactory.tryRead(
+                    reader, 
+                    new ActionListener() {
+                        public void actionPerformed(ActionEvent e) {
+                            if (e.getActionCommand().equals(GraphReaderFactory.READ_OK_MSG)) {
+                                visualization = createGraphVisualization(name, graph);
+                                fileHistory.insertPathname(name);
+                            }
+                            else {
+                                openTreeFile(name);
+                            }
+                        }
+                    });
+        }
+        else {
+            openTreeFile(name);
+        }
+    }
+    
+    void openTreeFile(final String name) {
+        final Tree tree = new DefaultTree();
+        AbstractReader reader = TreeReaderFactory.createTreeReader(name, tree);
+        if (reader != null) {
+            TreeReaderFactory.tryRead(
+                    reader, 
+                    new ActionListener() {
+                        public void actionPerformed(ActionEvent e) {
+                            if (e.getActionCommand().equals(GraphReaderFactory.READ_OK_MSG)) {
+                                visualization = createTreeVisualization(name, tree);
+                                fileHistory.insertPathname(name);
+                            }
+                            else {
+                                openTableFile(name);
+                            }
+                        }
+                    });
+        }
+        else {
+            openTableFile(name);
+        }
+    }
+
+    void openTableFile(final String name) {
+        final Table table = new DefaultTable();
+        AbstractReader reader = TableReaderFactory.createTableReader(name, table);
+        if (reader != null) {
+            TableReaderFactory.tryRead(
+                    reader, 
+                    new ActionListener() {
+                        public void actionPerformed(ActionEvent e) {
+                            if (e.getActionCommand().equals(GraphReaderFactory.READ_OK_MSG)) {
+                                visualization = createTableVisualization(name, table);
+                                fileHistory.insertPathname(name);
+                            }
+                            else {
+                                error(name);
+                                }
+                            }
+                    });
+        }
+        else {
+            error(name);
+        }
+    }
+    
+    void error(String name) {
+        fileOpenAction.setEnabled(true);
+        urlOpenAction.setEnabled(true);
+        
+        JOptionPane.showMessageDialog(
+                frame,
+                "Error",
+                "Couldn't read file " + name,
+                JOptionPane.ERROR_MESSAGE);
+    }
+
+    /**
+     * Returns a string column at a specified index.
+     * 
+     * @param t
+     *            the table
+     * @param index
+     *            the index
+     * 
+     * @return a string column at a specified index
+     */
+    public static StringColumn getStringColumn(Table t, int index) {
+        StringColumn ret = null;
+        for (int i = 0; i < t.getColumnCount(); i++) {
+            ret = StringColumn.getColumn(t, i);
+            if (ret != null && !ret.isInternal() && index-- == 0)
+                return ret;
+        }
+        return null;
+    }
+
+    /**
+     * Creates a split pane containing the visualization is a scrollpane.
+     * @param cp the control panel
+     * @return a split pane containing the visualization is a scrollpane.
+     */
+    public static JSplitPane createScrollVisualization(ControlPanel cp) {
+        return ControlPanelFactory.createScrollVisualization(cp);
+    }
+
+    /**
+     * Create the control panel associated with a specified visualization with a name.
+     * 
+     * @param name
+     *            The name (file name) of the visualization
+     * @param visualization
+     *            The Visualization 
+     * 
+     * @return the Visualization
+     */
+    public Visualization createControls(
+            String name,
+            final Visualization visualization) {
+        fileOpenAction.setEnabled(true);
+        urlOpenAction.setEnabled(true);
+        final ControlPanel control = ControlPanelFactory
+                .createControlPanel(visualization);
+
+        if (splashScreen != null) {
+            frame.getContentPane().remove(splashScreen);
+            splashScreen = null;
+        }
+        if (visualization != null && !creatingWindow) {
+            frame.getContentPane().remove(visualizationPanel);
+            controlPanel.dispose();
+            controlPanel = null;
+        }
+        else if (controlPanel != null && creatingWindow) {
+            JFrame window = new JFrame(name);
+
+            window.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+            window.addWindowListener(new WindowAdapter() {
+                public void windowClosed(WindowEvent e) {
+                    control.dispose();
+                }
+            });
+            JComponent visualizationPanel = createScrollVisualization(control);
+            window.getContentPane().add(visualizationPanel);
+            window.setVisible(true);
+            window.pack();
+            return visualization;
+        }
+        controlPanel = control;
+        visualizationPanel = createScrollVisualization(control);
+        frame.getContentPane().add(visualizationPanel);
+        frame.setTitle("Infovis Toolkit: "+name);
+        frame.validate();
+        System.gc();
+        System.runFinalization();
+        VisualizationFactory.Creator[] creators = VisualizationFactory
+                .getInstance().getCompatibleCreators(table);
+        visualizationMenu.removeAll();
+        for (int i = 0; i < creators.length; i++) {
+            addVisualizationMenu(creators[i], i);
+        }
+        visualizationMenu.setEnabled(creators.length != 0);
+        createImageItem.setEnabled(visualization != null);
+        editTableAction.setEnabled(visualization != null);
+
+        return visualization;
+    }
+
+    /**
+     * Adds a visualization menu with a creator.
+     * @param creator the creator
+     * @param i the index
+     */
+    public void addVisualizationMenu(
+            final VisualizationFactory.Creator creator,
+            int i) {
+        final String name = creator.getName();
+        visualizationMenu.add(new DefaultAction(name, '1' + i) {
+            public void actionPerformed(ActionEvent e) {
+                Visualization visualization = creator.create(table);
+                if (visualization != null)
+                    createControls(name, visualization);
+            }
+        });
+    }
+
+    /**
+     * Creates a graph visualization given its name and a graph.
+     * 
+     * @param name the name
+     * @param graph
+     *            the graph
+     * 
+     * @return a graph visualization given its name and a graph
+     */
+    public GraphVisualization createGraphVisualization(String name, Graph graph) {
+        table = graph;
+        MatrixVisualization visualization = new MatrixVisualization(graph);
+        createControls(name, visualization);
+        return visualization;
+    }
+
+    /**
+     * Creates a tree visualization given its name and tree.
+     *
+     * @param name the name 
+     * @param tree the tree
+     * 
+     * @return a tree visualization given its name and tree
+     */
+    public TreeVisualization createTreeVisualization(String name, Tree tree) {
+        table = tree;
+        TreemapVisualization visualization = new TreemapVisualization(
+                tree,
+                null);
+        createControls(name, visualization);
+        return visualization;
+    }
+
+    /**
+     * Creates a table visualization, given its name and table.
+     * 
+     * @param name the name
+     * @param table the table
+     * 
+     * @return a table visualization, given its name and table
+     */
+    public Visualization createTableVisualization(String name, Table table) {
+        this.table = table;
+        Visualization visualization = new ScatterPlotVisualization(table);
+        createControls(name, visualization);
+        return visualization;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public void actionPerformed(ActionEvent e) {
+        if (e.getSource() == urlChooser) {
+            urlDialog.setVisible(false);
+        }
+    }
+
+    /**
+     * Creates an image of the visualization,
+     * offering a dialog for choosing its name.
+     */
+    public void createImage() {
+        int ret = createImageFileChooser.showOpenDialog(null);
+        if (ret == JFileChooser.APPROVE_OPTION) {
+            File file = createImageFileChooser.getSelectedFile();
+            createImage(file, scaleModel.getValue() / 100.0f);
+        }
+    }
+
+    /**
+     * Creates an image of the visualization at the specified scale
+     * and saves it into the specified file.
+     * @param file the file
+     * @param scale the scale
+     */
+    public void createImage(File file, float scale) {
+        Component comp = visualization.getComponent();
+        while (comp != null && ! (comp instanceof JScrollPane)) {
+            comp = comp.getParent();
+        }
+        if (comp == null) {
+            logger.error("Visualization not in a scroll pane");
+            return;
+        }
+        JScrollPane scroll = (JScrollPane) comp;
+        Dimension savedSize = scroll.getSize();
+        Rectangle savedBounds = scroll.getBounds();
+        Rectangle bounds = new Rectangle(savedBounds);
+        Dimension d = scroll.getPreferredSize();
+        scroll.setSize(d);
+        scroll.validate();
+        
+        bounds.x = 0;
+        bounds.y = 0;
+        bounds.width = (int) (d.width * scale);
+        bounds.height = (int) (d.height * scale);
+        BufferedImage image = null;
+        try {
+            image = new BufferedImage(
+                    bounds.width,
+                    bounds.height,
+                    BufferedImage.TYPE_INT_RGB);
+        }
+        catch(OutOfMemoryError e) {
+            logger.error("Out of memory creating image", e);
+            JOptionPane.showMessageDialog(
+                    null,
+                    "Error",
+                    "Out of memory creating image",
+                    JOptionPane.ERROR_MESSAGE);
+            //parent.add(comp);
+            scroll.setSize(savedSize);
+            scroll.validate();
+            return;
+        }
+        Graphics2D g2d = (Graphics2D) image.getGraphics();
+//        g2d.setColor(comp.getBackground());
+//        g2d.fill(bounds);
+//        visualization.paint(g2d, bounds);
+        g2d.scale(scale, scale);
+        comp.paint(g2d);
+
+        try {
+            ImageIO.write(image, "png", file);
+        } catch (IOException e) {
+            logger.error("Cannot write png file " + file, e);
+        }
+        image.flush();
+        image = null;
+        scroll.setSize(savedSize);
+        scroll.validate();
+    }
+
+    /**
+     * Creates a JTable from a Table.
+     * @param table the table
+     * @return a JTable from a Table
+     */
+    public JComponent createJTable(Table table) {
+        JTable jtable = new JTable(table);
+        AbstractBooleanColumn sel = BooleanColumn.findColumn(
+                table,
+                Table.SELECTION_COLUMN);
+        jtable.setSelectionModel(sel);
+        jtable.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+        JScrollPane pane = new JScrollPane(
+                jtable,
+                JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+                JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        return pane;
+    }
+
+    /**
+     * Edits the table.
+     */
+    public void editTable() {
+        if (table == null)
+            return;
+        if (tableFrame == null) {
+            tableFrame = new JFrame("Table");
+            JComponent pane;
+            if (table instanceof Table) {
+                Table table = (Table) this.table;
+                pane = createJTable(table);
+            }
+            else if (table instanceof Graph) {
+                Graph graph = (Graph) table;
+                Table vertices = graph.getVertexTable();
+                Table edges = graph.getEdgeTable();
+    
+                JComponent v = createJTable(vertices);
+                JComponent e = createJTable(edges);
+                JTabbedPane tab = new JTabbedPane();
+                tab.add("Vertices", v);
+                tab.add("Edges", e);
+                pane = tab;
+            }
+            else {
+                logger.error("Unexpected table");
+                return;
+            }
+            tableFrame.getContentPane().add(pane);
+            //window.setSize(500, 500);
+            tableFrame.pack();
+        }
+        tableFrame.setVisible(true);
+    }
+    
+    /**
+     * {@inheritDoc}
+     */
+    public String getApplicationName() {
+        return "Infovis";
+    }
+    
+    /**
+     * {@inheritDoc}
+     */
+    public JMenu getFileMenu() {
+        return fileMenu;
+    }
+    
+    /**
+     * {@inheritDoc}
+     */
+    public JFrame getFrame() {
+        return frame;
+    }
+    
+    /**
+     * {@inheritDoc}
+     */
+    public Dimension getSize() {
+        return frame.getSize();
+    }
+    
+    /**
+     * {@inheritDoc}
+     */
+    public void loadFile(String pathname) {
+        openFile(new File(pathname));
+    }
+    
+    protected void exit(int code) {
+//        if (JOptionPane.showConfirmDialog(frame, 
+//                "Really Quit?",
+//                "Quit Requested",
+//                JOptionPane.OK_CANCEL_OPTION) == JOptionPane.OK_OPTION) {
+            fileHistory.saveHistoryEntries(); // Save pathname entries for
+            // next session.
+            System.exit(code);
+//        }
+    }
+
+
+    /**
+     * Main program.
+     * 
+     * @param args
+     *            args.
+     */
+    public static void main(String[] args) {
+        File loggerConfig = new File("properties/log4j.properties");
+        if (loggerConfig.exists()) {
+            PropertyConfigurator.configure(loggerConfig.toString());
+        }
+        else {
+            BasicConfigurator.configure();
+        }
+        JFrame frame = new JFrame("InfoVis Toolkit");
+        //infovis.InitFactories.init();
+        new MainFrameDecorator(frame);
+        frame.setSize(1024, 768);
+        frame.setVisible(true);
+    }
+}

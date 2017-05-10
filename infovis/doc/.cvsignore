@@ -1,0 +1,12 @@
+api
+*~
+html
+db
+err
+manual.aux
+manual.fo
+manual.log
+Thumbs.db
+manual.out
+docbook
+dbapi

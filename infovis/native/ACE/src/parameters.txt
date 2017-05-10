@@ -1,0 +1,27 @@
+% parameters for Amg Computation of Eigenpairs :  
+
+%input/output
+GraphKind:   % possibilities: unknown,grid,folded_grid,partial_grid,
+			 % partial_folded_grid,circle,tree,torus,cylinder default: unknown
+GraphSize1:   % default: -1
+GraphSize2:   % default: -1
+Inputfile:    % input filename in Chaco's format, default: graph.graph
+Outputfile: % File of the computed coordinates, default: input file with '.coords' extension
+OutputLayoutFormat: % Simple/Gdraw (Default: simple)
+WeightVerticesByDegrees: % True/False default: False
+ShowStatistics: % True / False  default: False
+ShowWarnings: % True / False  default: False
+StatisticsFile: % filename, omitting this line means: "print to the screen", default: empty
+NumDimensions   % number of dimensions (eigenvectors) to compute, default: 2
+
+%computation related:
+Threshold: 1e-3  % Stopping condition for rayleigh ||L*v-lambda*v||<Threshold , default: 1e-3
+MinSizeToCoarsen: 100  % Find directly the eigenpairs of graphs smaller than this size , default: 50
+CoarseningMethod: % Weighted, Contraction, noamg ,default: weighted
+
+%parameters related to weighted interploation:
+NumPasses: 2 % number of sweeps through permuted nodes list, default: 2
+MinConnectivity: 0.05 % during the first sweep add to the rep's each nodes whose relative  
+%					    connectivity to the already chosen rep's is less than MinConnectivity
+%						default: 0.05		
+ConnectivityGrowth: 0.05 % in each additional pass increase MinConnectivity by ConnectivityGrowth, default: 0.05

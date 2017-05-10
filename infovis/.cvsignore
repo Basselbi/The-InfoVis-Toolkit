@@ -1,0 +1,15 @@
+class
+build
+*~
+dist
+*.log
+debug.dot
+Thumbs.db
+debug.out
+*.tmp
+java.hprof.txt
+.checkclipse
+tmp
+coverage
+coverage.*
+debug.*

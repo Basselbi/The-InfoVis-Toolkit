@@ -1,0 +1,79 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Parameters file for ACE (Amg Computation of Eigenpairs:) %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%%%%%%%%%%%%%%%%
+%input/output: %
+%%%%%%%%%%%%%%%%
+
+% There are two possibilities to get an input graph:
+% 1. Read a graph from file (in Chaco format)
+%    In this case, the GraphKind field (below) should be filled with "unknown"
+% 2. Generate a graph (and write it to a file)
+%    You should choose the graph kind, and also the size(s) relevant to the graph
+%    The graph will be written to the Inputfile (see below)
+%    NOTE: prior contents of Inputfile will be erased 
+
+GraphKind: unknown % possibilities: unknown,grid,folded_grid,partial_grid,
+			       % partial_folded_grid,circle,tree,torus,cylinder,sierpinski 
+				   % hypercube default: unknown
+
+GraphSize1: 200 % default: -1
+
+GraphSize2: 200  % default: -1
+
+% input filename in Chaco's format, default: graph.graph:
+Inputfile: D:\GraphCollections\walshaw\4970.graph  
+
+% File of the computed coordinates, default: input file with '.coords' extension
+Outputfile: D:\GraphCollections\temp.layout 
+
+WeightVerticesByDegrees: false % True/False default: False
+
+ShowStatistics: true % True / False  default: False
+
+ShowWarnings: true % True / False  default: False
+
+StatisticsFile: D:\GraphCollections\stats1.txt % filename, omitting this line means: 
+											   % "print to the screen", default: empty
+
+% The eigenvectors with which the x and y axes should be associated:
+Dimensions2Show: 1 2 
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%
+% computation related: %
+%%%%%%%%%%%%%%%%%%%%%%%%
+% Tolerances of Power Iteration and RQI
+% One can use both methods (First PI and then RQI)
+% or each one of them
+
+% a negtive or zero value here means: "no power iteration"
+PowerIterationTolerance: 1e-7 
+
+% a negtive or zero value here means: "no RQI"
+RqiTolerance: 1e-3 
+
+ % Find directly the eigenpairs of graphs smaller than the following size:
+MinSizeToCoarsen: 100 % default: 50
+
+CoarseningMethod: Contraction  % Weighted, Contraction, default: weighted
+
+% Frequency of refinement: E.g., 1 - each level 2 - each 2 levels
+LevelsBetweenRefinements: 1 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Parameters related to weighted interploation: %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+NumPasses: 2 % number of sweeps through permuted nodes list, default: 2
+MinConnectivity: 0.05 % during the first sweep add to the rep's each nodes whose relative  
+					  %	connectivity to the already chosen rep's is less than MinConnectivity
+					  %	default: 0.05		
+
+% in each additional pass increase MinConnectivity by ConnectivityGrowth:
+ConnectivityGrowth: 0.05 %default: 0.05
+
+
